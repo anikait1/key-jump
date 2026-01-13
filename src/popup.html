@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 320px;
+      background: #212121;
+      color: #fff;
+      font-family: 'Roboto', 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    
+    h1 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .subtitle {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 16px;
+    }
+    
+    .section {
+      margin-bottom: 14px;
+    }
+    
+    .section h2 {
+      font-size: 10px;
+      font-weight: 500;
+      color: #ffcc00;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      font-size: 12px;
+    }
+    
+    .row span {
+      margin-left: auto;
+      color: #ccc;
+    }
+    
+    kbd {
+      background: #333;
+      border: 1px solid #444;
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #fff;
+      box-shadow: 0 1px 0 #222;
+    }
+    
+    .tip {
+      margin-top: 14px;
+      padding: 10px;
+      background: #2a2a2a;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #aaa;
+      border-left: 3px solid #ffcc00;
+    }
+  </style>
+</head>
+<body>
+  <h1>Keyboard Hints</h1>
+  <p class="subtitle">Vimium-style navigation for any website</p>
+  
+  <div class="section">
+    <h2>Hint Mode (Common)</h2>
+    <div class="row"><kbd>f</kbd><span>Show click hints</span></div>
+    <div class="row"><kbd>Shift</kbd> + <kbd>F</kbd><span>Right-click hints</span></div>
+  </div>
+  
+  <div class="section">
+    <h2>Hint Mode (All Elements)</h2>
+    <div class="row"><kbd>Ctrl</kbd> + <kbd>f</kbd><span>Show all click hints</span></div>
+    <div class="row"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd><span>All right-click hints</span></div>
+  </div>
+  
+  <div class="section">
+    <h2>While in Hint Mode</h2>
+    <div class="row"><kbd>a-z</kbd><span>Type hint characters</span></div>
+    <div class="row"><kbd>Backspace</kbd><span>Delete last character</span></div>
+    <div class="row"><kbd>Esc</kbd><span>Cancel</span></div>
+  </div>
+  
+  <p class="tip">When a context menu is open, hints automatically scope to menu items only.</p>
+</body>
+</html>

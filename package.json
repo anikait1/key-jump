@@ -1,0 +1,16 @@
+{
+  "name": "youtube-music-macros",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build src/content.ts --outdir dist --target browser",
+    "watch": "bun build src/content.ts --outdir dist --target browser --watch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
