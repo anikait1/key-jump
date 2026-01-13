@@ -1,81 +1,152 @@
 import { type SiteConfig, getConfigForUrl } from "./config";
 
-type ClickMode = "left" | "right";
-type HintScope = "common" | "all";
+const ClickMode = {
+  left: "left",
+  right: "right",
+} as const
 
-interface HintState {
-  active: boolean;
-  mode: ClickMode;
-  scope: HintScope;
+/**
+ * TODO: Make 'configured' scope configurable per website
+ * 
+ * Showing all clickable elements on the page with keyboard hints can clutter the screen a lot.
+ * Therefore, we define two scopes for hints. Eventually the goal is to allow users to customize
+ * the selectors used for 'configured' scope and make it a per site configurable option.
+ * - configured: A curated set of commonly used clickable elements defined per site in the config.
+ * - all: All clickable elements found on the page using generic selectors.
+ */
+const HintScope = {
+  configured: "configured",
+  all: "all",
+} as const
+
+type HintScopeType = typeof HintScope[keyof typeof HintScope];
+type ClickModeType = typeof ClickMode[keyof typeof ClickMode];
+
+type HintStateType = {
+  active: false;
+} | {
+  active: true;
+  clickMode: ClickModeType;
+  scope: HintScopeType;
   hints: Map<string, HTMLElement>;
   overlays: HTMLElement[];
   typed: string;
 }
 
-const HINT_CHARS = "asdfghjklqweruiop";
-const HINT_CONTAINER_ID = "keyboard-hints-container";
+type KeyModifier = "ctrl" | "alt" | "shift" | "meta";
 
-const currentConfig: SiteConfig = getConfigForUrl(window.location.href);
+type Shortcut = {
+  key: string;
+  modifiers: KeyModifier[];
+  transition?: () => HintStateType;
+  action: () => void;
+}
 
-const state: HintState = {
-  active: false,
-  mode: "left",
-  scope: "common",
-  hints: new Map(),
-  overlays: [],
-  typed: "",
-};
+const Shortcuts: Shortcut[] = [
+  {
+    key: "f",
+    modifiers: [],
+    transition: () => ({ active: true, clickMode: "left", scope: "configured", hints: new Map(), overlays: [], typed: "" }),
+    action: () => showHints()
+  },
+  {
+    key: "f",
+    modifiers: ["shift"],
+    transition: () => ({ active: true, clickMode: "right", scope: "configured", hints: new Map(), overlays: [], typed: "" }),
+    action: () => showHints()
+  },
+  {
+    key: "f",
+    modifiers: ["ctrl"],
+    transition: () => ({ active: true, clickMode: "left", scope: "all", hints: new Map(), overlays: [], typed: "" }),
+    action: () => showHints()
+  },
+  {
+    key: "f",
+    modifiers: ["ctrl", "shift"],
+    transition: () => ({ active: true, clickMode: "right", scope: "all", hints: new Map(), overlays: [], typed: "" }),
+    action: () => showHints()
+  }
+]
+const HintCharacters = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "u", "i", "o", "p"];
+const HintContainerId = "keyboard-hints-container";
+const MenuSelectors = [
+  '[role="menuitem"]',
+  '[role="option"]',
+  "a[href]",
+  "button",
+];
 
+const CurrentSiteConfig: SiteConfig = getConfigForUrl(window.location.href);
+let HintState: HintStateType = { active: false };
+
+/**
+ * Generate uniqu keyboard hint labels using base-N encoding over the HintCharacters.
+ * Labels are generated in increasing order of length (a, s, d, ..., aa, as, ...)
+ */
 function generateHintLabels(count: number): string[] {
   const labels: string[] = [];
-  const chars = HINT_CHARS.split("");
+  const base = HintCharacters.length;
 
-  if (count <= chars.length) {
-    return chars.slice(0, count);
-  }
+  for (let i = 0; labels.length < count; i++) {
+    let label = "";
+    let n = i;
 
-  for (const c1 of chars) {
-    for (const c2 of chars) {
-      labels.push(c1 + c2);
-      if (labels.length >= count) return labels;
-    }
+    do {
+      label = HintCharacters[n % base] + label;
+      n = Math.floor(n / base) - 1;
+    } while (n >= 0);
+
+    labels.push(label);
   }
 
   return labels;
 }
 
-function getActivePopup(): HTMLElement | null {
-  if (!currentConfig.popupSelector) return null;
-
-  const popup = document.querySelector<HTMLElement>(currentConfig.popupSelector);
-  if (popup && popup.offsetParent !== null) {
-    return popup;
+function getClickableElements(): HTMLElement[] {
+  if (HintState.active === false) {
+    return [];
   }
-  return null;
-}
 
-function getClickableElements(scope: HintScope): HTMLElement[] {
-  const popup = getActivePopup();
+  /**
+   * In case the config has a popup selector and the selector is visible prioritize
+   * rendering hints within the popup only.
+   */
+  let popup: HTMLElement | null = null;
+  if (CurrentSiteConfig.popupSelector) {
+    const potentialPopup = document.querySelector<HTMLElement>(CurrentSiteConfig.popupSelector);
+    /**
+     * It is possible the popup exists in the DOM but is not currently visible.
+     * We only want to consider it if it is visible (offsetParent is not null).
+     * 
+     * Ref: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/offsetParent
+     */
+    if (potentialPopup && potentialPopup.offsetParent !== null) {
+      popup = potentialPopup;
+    }
+  }
 
-  let elements: HTMLElement[];
-
+  const elements: HTMLElement[] = []
   if (popup) {
-    const menuSelectors = [
-      '[role="menuitem"]',
-      '[role="option"]',
-      "a[href]",
-      "button",
-    ];
-    elements = Array.from(popup.querySelectorAll<HTMLElement>(menuSelectors.join(", ")));
+    elements.push(
+      ...Array.from(popup.querySelectorAll<HTMLElement>(MenuSelectors.join(", ")))
+    )
   } else {
-    const selectors = scope === "common" ? currentConfig.commonSelectors : currentConfig.allSelectors;
-    const selectorString = selectors.join(", ");
-    elements = Array.from(document.querySelectorAll<HTMLElement>(selectorString));
+    const selectors = HintState.scope === "configured" ? CurrentSiteConfig.configuredSelectors : CurrentSiteConfig.allSelectors;
+    elements.push(
+      ...Array.from(document.querySelectorAll<HTMLElement>(selectors.join(", ")))
+    )
   }
 
-  return elements.filter((el) => {
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
+  /**
+   * Filter out non visible elements, however the issue here is if the screen changes
+   * due to some other interaction (scroll etc.) the hints will not update their visibility.
+   * 
+   * TODO: Implement a MutationObserver or IntersectionObserver to handle dynamic visibility changes?
+   */
+  return elements.filter((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
 
     return (
       rect.width > 0 &&
@@ -94,95 +165,96 @@ function createHintOverlay(label: string, element: HTMLElement): HTMLElement {
   const rect = element.getBoundingClientRect();
   const overlay = document.createElement("div");
 
-  overlay.className = "keyboard-hint";
   overlay.textContent = label.toUpperCase();
   overlay.dataset.hint = label;
 
-  overlay.style.cssText = `
-    position: fixed;
-    top: ${rect.top + rect.height / 2 - 10}px;
-    left: ${rect.left + rect.width / 2 - 10}px;
-    background: #ffcc00;
-    color: #000;
-    font-size: 11px;
-    font-weight: bold;
-    font-family: monospace;
-    padding: 2px 5px;
-    border-radius: 3px;
-    z-index: 2147483647;
-    pointer-events: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    border: 1px solid #cc9900;
-  `;
+  Object.assign(overlay.style, {
+    position: "fixed",
+    top: `${rect.top + rect.height / 2}px`,
+    left: `${rect.left + rect.width / 2}px`,
+    transform: "translate(-50%, -50%)",
+    zIndex: "2147483647",
+    pointerEvents: "none",
+
+    background: "#1f2933",
+    color: "#e6fffa",
+    fontSize: "11px",
+    fontWeight: "700",
+    fontFamily:
+      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+
+    padding: "3px 6px",
+    borderRadius: "4px",
+    border: "1px solid #2dd4bf",
+    whiteSpace: "nowrap",
+    userSelect: "none",
+    boxShadow:
+      "0 4px 8px rgba(0,0,0,0.45), 0 0 0 1px rgba(45,212,191,0.15)",
+  });
 
   return overlay;
 }
 
-function showHints(mode: ClickMode, scope: HintScope): void {
-  if (state.active) {
-    hideHints();
-  }
+function showHints(): void {
+  // Ideally this should not happen, but just a safeguard and helps with type narrowing.
+  if (HintState.active === false) return;
 
-  const elements = getClickableElements(scope);
+  const elements = getClickableElements();
   if (elements.length === 0) return;
 
   const labels = generateHintLabels(elements.length);
-
-  let container = document.getElementById(HINT_CONTAINER_ID);
+  let container = document.getElementById(HintContainerId);
   if (!container) {
     container = document.createElement("div");
-    container.id = HINT_CONTAINER_ID;
+    container.id = HintContainerId;
     document.body.appendChild(container);
   }
 
-  state.hints.clear();
-  state.overlays = [];
-  state.typed = "";
-  state.mode = mode;
-  state.scope = scope;
-  state.active = true;
+  for (const [index, element] of elements.entries()) {
+    const label = labels[index];
+    if (!label) {
+      console.warn("[Keyboard Hints] Not enough hint labels generated for the number of elements.");
+      continue;
+    }
 
-  elements.forEach((el, i) => {
-    const label = labels[i];
-    const overlay = createHintOverlay(label, el);
-    container!.appendChild(overlay);
-    state.hints.set(label, el);
-    state.overlays.push(overlay);
-  });
+    const overlay = createHintOverlay(label, element);
+    HintState.hints.set(label, element);
+    HintState.overlays.push(overlay);
+    container.appendChild(overlay);
+  }
 
-  console.log(`[Keyboard Hints] Showing ${elements.length} hints (${mode}-click mode)`);
+  console.debug(`[Keyboard Hints] Showing ${elements.length} hints (${HintState.clickMode}-click mode)`);
 }
 
 function hideHints(): void {
-  const container = document.getElementById(HINT_CONTAINER_ID);
+  const container = document.getElementById(HintContainerId);
   if (container) {
     container.innerHTML = "";
   }
 
-  state.active = false;
-  state.hints.clear();
-  state.overlays = [];
-  state.typed = "";
+  HintState = { active: false };
 }
 
 function updateHintVisibility(): void {
-  state.overlays.forEach((overlay) => {
-    const hint = overlay.dataset.hint || "";
-    if (hint.startsWith(state.typed)) {
+  if (HintState.active === false) return;
+
+  for (const overlay of HintState.overlays) {
+    const hint = overlay.dataset.hint ?? "";
+    if (hint.startsWith(HintState.typed)) {
       overlay.style.display = "block";
-      if (state.typed.length > 0) {
-        const matched = hint.slice(0, state.typed.length);
-        const remaining = hint.slice(state.typed.length);
-        overlay.innerHTML = `<span style="opacity: 0.5">${matched.toUpperCase()}</span>${remaining.toUpperCase()}`;
-      }
+      const matched = hint.slice(0, HintState.typed.length);
+      const remaining = hint.slice(HintState.typed.length);
+      overlay.innerHTML = `<span style="opacity: 0.5">${matched.toUpperCase()}</span>${remaining.toUpperCase()}`;
     } else {
       overlay.style.display = "none";
     }
-  });
+  }
 }
 
-function executeClick(element: HTMLElement, mode: ClickMode): void {
-  if (mode === "right") {
+function executeClick(element: HTMLElement): void {
+  if (HintState.active === false) return;
+
+  if (HintState.clickMode === ClickMode.right) {
     const event = new MouseEvent("contextmenu", {
       bubbles: true,
       cancelable: true,
@@ -198,62 +270,60 @@ function executeClick(element: HTMLElement, mode: ClickMode): void {
 }
 
 function handleHintInput(key: string): void {
-  if (!state.active) return;
+  if (HintState.active === false) return;
+  if (!HintCharacters.includes(key) && key !== "backspace" && key !== "escape") return;
 
-  if (key === "Escape") {
-    hideHints();
-    return;
-  }
-
-  if (key === "Backspace") {
-    state.typed = state.typed.slice(0, -1);
-    updateHintVisibility();
-    return;
-  }
-
-  if (!HINT_CHARS.includes(key.toLowerCase())) {
-    return;
-  }
-
-  state.typed += key.toLowerCase();
-
-  const exactMatch = state.hints.get(state.typed);
-  if (exactMatch) {
-    hideHints();
-    executeClick(exactMatch, state.mode);
-    return;
-  }
-
-  const matchingHints = Array.from(state.hints.keys()).filter((h) =>
-    h.startsWith(state.typed)
-  );
-
-  if (matchingHints.length === 0) {
-    state.typed = state.typed.slice(0, -1);
-    return;
-  }
-
-  if (matchingHints.length === 1) {
-    const element = state.hints.get(matchingHints[0]);
-    if (element) {
+  switch (key) {
+    case "escape":
       hideHints();
-      executeClick(element, state.mode);
+      break;
+    case "backspace":
+      HintState.typed = HintState.typed.slice(0, -1);
+      updateHintVisibility();
+      break;
+    default: {
+      HintState.typed += key.toLowerCase();
+      const currentTypedHint = HintState.typed;
+      const matchingHints = Array.from(
+        HintState.hints.keys().filter((hint) =>
+          hint.startsWith(currentTypedHint)
+        )
+      );
+
+      /**
+       * In case of no matches, remove the last typed character,
+       * saves the user from having to press backspace repeatedly.
+       */
+      if (matchingHints.length === 0) {
+        HintState.typed = HintState.typed.slice(0, -1);
+        return;
+      }
+
+      /**
+       * In case partial match leads to a single hint, immediately execute the click
+       * Example: [aa, ab, jk] are hints, if user types 'j' it matches to single hint 'jk'
+       * so we can directly execute the click. The same cannot be done for 'a' as it matches to
+       * multiple hints.
+       */
+      if (matchingHints.length === 1) {
+        const label = matchingHints[0];
+        if (!label) {
+          console.error("[Keyboard Hints] Unexpected error: matching hint label is undefined.");
+          hideHints()
+          return;
+        }
+
+        const element = HintState.hints.get(label);
+        if (element) {
+          executeClick(element);
+          hideHints();
+          return;
+        }
+      }
+
+      updateHintVisibility();
     }
-    return;
   }
-
-  updateHintVisibility();
-}
-
-function isInputFocused(): boolean {
-  const active = document.activeElement;
-  if (!active) return false;
-  const tagName = active.tagName.toLowerCase();
-  return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    (active as HTMLElement).isContentEditable
-  );
 }
 
 function preventEventDefaults(event: KeyboardEvent): void {
@@ -261,50 +331,46 @@ function preventEventDefaults(event: KeyboardEvent): void {
   event.stopPropagation();
 }
 
-function handleKeydown(e: KeyboardEvent): void {
-  if (state.active) {
-    e.preventDefault();
-    e.stopPropagation();
-    handleHintInput(e.key);
+function handleKeydown(event: KeyboardEvent): void {
+  /**
+   * Do not trigger hints if an input field is focused
+   * to avoid interfering with user typing. This also means
+   * if a user focuses on an input field even after activating
+   * hints, the hints will not process further input.
+   */
+  const activeElement = document.activeElement;
+  if (activeElement) {
+    const tagName = activeElement.tagName.toLowerCase();
+    const isContentEditable = activeElement instanceof HTMLElement && activeElement.isContentEditable;
+
+    if (tagName === "input" || tagName === "textarea" || isContentEditable) {
+      return;
+    }
+  }
+
+  const key = event.key.toLowerCase();
+
+  if (HintState.active) {
+    preventEventDefaults(event)
+    handleHintInput(key);
     return;
   }
 
-  if (isInputFocused()) return;
+  const modifiers: KeyModifier[] = [];
+  if (event.ctrlKey) modifiers.push("ctrl");
+  if (event.altKey) modifiers.push("alt");
+  if (event.shiftKey) modifiers.push("shift");
+  if (event.metaKey) modifiers.push("meta");
 
-  // 'f' for left-click hints (common elements)
-  if (e.key === "f" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
-    e.preventDefault();
-    e.stopPropagation();
-    showHints("left", "common");
-    return;
-  }
+  const shortcut = Shortcuts.find(shortcut => shortcut.key === key && shortcut.modifiers.every(modifier => modifiers.includes(modifier)));
+  if (!shortcut) return;
 
-  // 'Shift+F' for right-click (context menu) hints (common elements)
-  if (e.key === "F" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    e.preventDefault();
-    e.stopPropagation();
-    showHints("right", "common");
-    return;
-  }
-
-  // 'Ctrl+F' for left-click hints (ALL elements)
-  if (e.key === "f" && e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
-    e.preventDefault();
-    e.stopPropagation();
-    showHints("left", "all");
-    return;
-  }
-
-  // 'Ctrl+Shift+F' for right-click hints (ALL elements)
-  if (e.key === "F" && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
-    e.preventDefault();
-    e.stopPropagation();
-    showHints("right", "all");
-    return;
-  }
+  preventEventDefaults(event);
+  HintState = shortcut.transition ? shortcut.transition() : HintState;
+  shortcut.action();
 }
 
 document.addEventListener("keydown", handleKeydown, true);
 
-console.log(`[Keyboard Hints] Loaded config: ${currentConfig.name}`);
+console.log(`[Keyboard Hints] Loaded config: ${CurrentSiteConfig.name}`);
 console.log("[Keyboard Hints] Shortcuts: f, Shift+F, Ctrl+f, Ctrl+Shift+F, Esc");

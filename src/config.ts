@@ -1,15 +1,15 @@
 export interface SiteConfig {
   name: string;
   urlPattern: string;
-  commonSelectors: string[];
+  configuredSelectors: string[];
   allSelectors: string[];
   popupSelector?: string;
 }
 
-export const DEFAULT_CONFIG: SiteConfig = {
+export const DefaultConfig: SiteConfig = {
   name: "Default",
   urlPattern: "*",
-  commonSelectors: [
+  configuredSelectors: [
     "a[href]",
     "button",
     '[role="button"]',
@@ -32,11 +32,11 @@ export const DEFAULT_CONFIG: SiteConfig = {
   ],
 };
 
-export const SITE_CONFIGS: SiteConfig[] = [
+export const SiteConfigs: SiteConfig[] = [
   {
     name: "YouTube Music",
     urlPattern: "music.youtube.com",
-    commonSelectors: [
+    configuredSelectors: [
       "ytmusic-responsive-list-item-renderer",
       "ytmusic-playlist-panel-video-renderer",
       "ytmusic-two-row-item-renderer",
@@ -70,17 +70,9 @@ export const SITE_CONFIGS: SiteConfig[] = [
     ],
     popupSelector: "ytmusic-menu-popup-renderer",
   },
-  // Add more site configs here
 ];
 
 export function getConfigForUrl(url: string): SiteConfig {
   const hostname = new URL(url).hostname;
-
-  for (const config of SITE_CONFIGS) {
-    if (hostname.includes(config.urlPattern)) {
-      return config;
-    }
-  }
-
-  return DEFAULT_CONFIG;
+  return SiteConfigs.find(config => hostname.includes(config.urlPattern)) ?? DefaultConfig;
 }
