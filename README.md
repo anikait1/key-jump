@@ -1,7 +1,8 @@
 # Key Jump
 
 A browser extension that adds keyboard hints to any website. Press a key to reveal hint labels on clickable elements, then type the hint to click. Configure custom selectors on a per-site basis.
-https://github.com/user-attachments/assets/2fceace4-e687-415c-9b66-239708212dc8
+
+[Watch demo](https://github.com/user-attachments/assets/2fceace4-e687-415c-9b66-239708212dc8)
 
 
 
