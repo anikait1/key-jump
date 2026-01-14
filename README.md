@@ -1,6 +1,6 @@
-# YouTube Music Macros
+# Key Jump
 
-A browser extension that adds Vimium-style keyboard navigation to YouTube Music. Press a key to reveal hint labels on all clickable elements, then type the hint to click.
+A browser extension that adds keyboard hints to any website. Press a key to reveal hint labels on clickable elements, then type the hint to click. Configure custom selectors on a per-site basis.
 
 ## Features
 
@@ -16,24 +16,21 @@ A browser extension that adds Vimium-style keyboard navigation to YouTube Music.
 
 ### Two-Tier Hints
 
-- **Common mode** (`f` / `Shift+F`): Shows hints only for songs, player controls, and menu items — less clutter
+- **Common mode** (`f` / `Shift+F`): Shows hints for high-value elements — less clutter
 - **All mode** (`Ctrl+f` / `Ctrl+Shift+F`): Shows hints for every clickable element — power user mode
+
+### Per-Site Configuration
+
+Configure custom CSS selectors for any website to hint only the elements you want. Settings are stored per-domain.
 
 ### Context-Aware Menus
 
 When a context menu (right-click menu) is open, hints automatically scope to only the menu items. This enables a smooth workflow:
 
-1. `Shift+F` → right-click hint on a song
+1. `Shift+F` → right-click hint on an element
 2. Context menu opens
 3. `f` → hints appear only on menu options
-4. Type hint → action executes (e.g., "Add to queue")
-
-### How it works
-
-1. Press `f` to enter hint mode
-2. Yellow labels appear on all clickable elements
-3. Type the hint letters to click that element
-4. For context menus (e.g., "Add to queue"), use `Shift+F` instead
+4. Type hint → action executes
 
 ## Installation
 
@@ -73,19 +70,19 @@ After making changes, refresh the extension in your browser's extension page.
 
 ## Usage Examples
 
-**Add a song to queue:**
-1. Press `Shift+F` to show right-click hints
-2. Type the hint on the song → context menu opens
-3. Press `f` → hints appear on menu items only
-4. Type hint for "Add to queue"
-
-**Like the current song:**
+**Click a link:**
 1. Press `f` to show click hints
-2. Type the hint on the thumbs-up button in the player bar
+2. Type the hint on the link
 
-**Navigate to an artist:**
+**Right-click menu action:**
+1. Press `Shift+F` to show right-click hints
+2. Type the hint → context menu opens
+3. Press `f` → hints appear on menu items only
+4. Type hint for desired action
+
+**Navigate to an element with Ctrl+f:**
 1. Press `Ctrl+f` to show all hints (includes links)
-2. Type the hint on the artist name
+2. Type the hint on the element
 
 ## Project Structure
 
@@ -95,7 +92,7 @@ After making changes, refresh the extension in your browser's extension page.
 │   └── content.ts     # Content script source
 ├── dist/
 │   └── content.js     # Built content script
-└── icons/             # Extension icons (optional)
+└── icons/             # Extension icons (generated with Gemini)
 ```
 
 ## License
