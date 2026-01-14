@@ -1,10 +1,5 @@
 import { type SiteConfig, getConfigForUrl } from "./config";
 
-const ClickMode = {
-  left: "left",
-  right: "right",
-} as const
-
 /**
  * TODO: Make 'configured' scope configurable per website
  * 
@@ -19,56 +14,54 @@ const HintScope = {
   all: "all",
 } as const
 
+const HintStatus = {
+  active: "active",
+  inactive: "inactive",
+} as const
+
+const ClickMode = {
+  left: "left",
+  right: "right",
+} as const
+
+
 type HintScopeType = typeof HintScope[keyof typeof HintScope];
 type ClickModeType = typeof ClickMode[keyof typeof ClickMode];
 
-type HintStateType = {
-  active: false;
-} | {
-  active: true;
+type ActiveHintState = {
+  status: "active";
   clickMode: ClickModeType;
   scope: HintScopeType;
   hints: Map<string, HTMLElement>;
   overlays: HTMLElement[];
   typed: string;
-}
+};
 
-type KeyModifier = "ctrl" | "alt" | "shift" | "meta";
+type InactiveHintState = { status: "inactive" };
+type HintStateType = ActiveHintState | InactiveHintState;
+type ActivationConfig = { clickMode: ClickModeType; scope: HintScopeType };
 
-type Shortcut = {
-  key: string;
-  modifiers: KeyModifier[];
-  transition?: () => HintStateType;
-  action: () => void;
-}
+const ActivationKeys: Record<string, ActivationConfig> = {
+  "f": { clickMode: "left", scope: "configured" },
+  "shift+f": { clickMode: "right", scope: "configured" },
+  "ctrl+f": { clickMode: "left", scope: "all" },
+  "ctrl+shift+f": { clickMode: "right", scope: "all" },
+};
 
-const Shortcuts: Shortcut[] = [
-  {
-    key: "f",
-    modifiers: [],
-    transition: () => ({ active: true, clickMode: "left", scope: "configured", hints: new Map(), overlays: [], typed: "" }),
-    action: () => showHints()
-  },
-  {
-    key: "f",
-    modifiers: ["shift"],
-    transition: () => ({ active: true, clickMode: "right", scope: "configured", hints: new Map(), overlays: [], typed: "" }),
-    action: () => showHints()
-  },
-  {
-    key: "f",
-    modifiers: ["ctrl"],
-    transition: () => ({ active: true, clickMode: "left", scope: "all", hints: new Map(), overlays: [], typed: "" }),
-    action: () => showHints()
-  },
-  {
-    key: "f",
-    modifiers: ["ctrl", "shift"],
-    transition: () => ({ active: true, clickMode: "right", scope: "all", hints: new Map(), overlays: [], typed: "" }),
-    action: () => showHints()
-  }
-]
+type HintInputAction =
+  | { type: "escape" }
+  | { type: "backspace" }
+  | { type: "character"; char: string }
+  | { type: "ignored" };
+
 const HintCharacters = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "u", "i", "o", "p"];
+
+function classifyHintInput(key: string): HintInputAction {
+  if (key === "escape") return { type: "escape" };
+  if (key === "backspace") return { type: "backspace" };
+  if (HintCharacters.includes(key)) return { type: "character", char: key };
+  return { type: "ignored" };
+}
 const HintContainerId = "keyboard-hints-container";
 const MenuSelectors = [
   '[role="menuitem"]',
@@ -78,7 +71,7 @@ const MenuSelectors = [
 ];
 
 const CurrentSiteConfig: SiteConfig = getConfigForUrl(window.location.href);
-let HintState: HintStateType = { active: false };
+let HintState: HintStateType = { status: HintStatus.inactive };
 
 /**
  * Generate uniqu keyboard hint labels using base-N encoding over the HintCharacters.
@@ -103,11 +96,7 @@ function generateHintLabels(count: number): string[] {
   return labels;
 }
 
-function getClickableElements(): HTMLElement[] {
-  if (HintState.active === false) {
-    return [];
-  }
-
+function getClickableElements(state: ActiveHintState): HTMLElement[] {
   /**
    * In case the config has a popup selector and the selector is visible prioritize
    * rendering hints within the popup only.
@@ -118,7 +107,7 @@ function getClickableElements(): HTMLElement[] {
     /**
      * It is possible the popup exists in the DOM but is not currently visible.
      * We only want to consider it if it is visible (offsetParent is not null).
-     * 
+     *
      * Ref: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/offsetParent
      */
     if (potentialPopup && potentialPopup.offsetParent !== null) {
@@ -132,7 +121,7 @@ function getClickableElements(): HTMLElement[] {
       ...Array.from(popup.querySelectorAll<HTMLElement>(MenuSelectors.join(", ")))
     )
   } else {
-    const selectors = HintState.scope === "configured" ? CurrentSiteConfig.configuredSelectors : CurrentSiteConfig.allSelectors;
+    const selectors = state.scope === "configured" ? CurrentSiteConfig.configuredSelectors : CurrentSiteConfig.allSelectors;
     elements.push(
       ...Array.from(document.querySelectorAll<HTMLElement>(selectors.join(", ")))
     )
@@ -141,7 +130,7 @@ function getClickableElements(): HTMLElement[] {
   /**
    * Filter out non visible elements, however the issue here is if the screen changes
    * due to some other interaction (scroll etc.) the hints will not update their visibility.
-   * 
+   *
    * TODO: Implement a MutationObserver or IntersectionObserver to handle dynamic visibility changes?
    */
   return elements.filter((element) => {
@@ -195,11 +184,8 @@ function createHintOverlay(label: string, element: HTMLElement): HTMLElement {
   return overlay;
 }
 
-function showHints(): void {
-  // Ideally this should not happen, but just a safeguard and helps with type narrowing.
-  if (HintState.active === false) return;
-
-  const elements = getClickableElements();
+function showHints(state: ActiveHintState): void {
+  const elements = getClickableElements(state);
   if (elements.length === 0) return;
 
   const labels = generateHintLabels(elements.length);
@@ -218,12 +204,12 @@ function showHints(): void {
     }
 
     const overlay = createHintOverlay(label, element);
-    HintState.hints.set(label, element);
-    HintState.overlays.push(overlay);
+    state.hints.set(label, element);
+    state.overlays.push(overlay);
     container.appendChild(overlay);
   }
 
-  console.debug(`[Keyboard Hints] Showing ${elements.length} hints (${HintState.clickMode}-click mode)`);
+  console.debug(`[Keyboard Hints] Showing ${elements.length} hints (${state.clickMode}-click mode)`);
 }
 
 function hideHints(): void {
@@ -232,18 +218,16 @@ function hideHints(): void {
     container.innerHTML = "";
   }
 
-  HintState = { active: false };
+  HintState = { status: HintStatus.inactive };
 }
 
-function updateHintVisibility(): void {
-  if (HintState.active === false) return;
-
-  for (const overlay of HintState.overlays) {
+function updateHintVisibility(state: ActiveHintState): void {
+  for (const overlay of state.overlays) {
     const hint = overlay.dataset.hint ?? "";
-    if (hint.startsWith(HintState.typed)) {
+    if (hint.startsWith(state.typed)) {
       overlay.style.display = "block";
-      const matched = hint.slice(0, HintState.typed.length);
-      const remaining = hint.slice(HintState.typed.length);
+      const matched = hint.slice(0, state.typed.length);
+      const remaining = hint.slice(state.typed.length);
       overlay.innerHTML = `<span style="opacity: 0.5">${matched.toUpperCase()}</span>${remaining.toUpperCase()}`;
     } else {
       overlay.style.display = "none";
@@ -251,10 +235,8 @@ function updateHintVisibility(): void {
   }
 }
 
-function executeClick(element: HTMLElement): void {
-  if (HintState.active === false) return;
-
-  if (HintState.clickMode === ClickMode.right) {
+function executeClick(element: HTMLElement, state: ActiveHintState): void {
+  if (state.clickMode === ClickMode.right) {
     const event = new MouseEvent("contextmenu", {
       bubbles: true,
       cancelable: true,
@@ -269,66 +251,73 @@ function executeClick(element: HTMLElement): void {
   }
 }
 
-function handleHintInput(key: string): void {
-  if (HintState.active === false) return;
-  if (!HintCharacters.includes(key) && key !== "backspace" && key !== "escape") return;
+function preventEventDefaults(event: KeyboardEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+}
 
-  switch (key) {
+function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintState): void {
+  preventEventDefaults(event);
+
+  const action = classifyHintInput(key);
+
+  switch (action.type) {
+    case "ignored":
+      break;
+
     case "escape":
       hideHints();
       break;
+
     case "backspace":
-      HintState.typed = HintState.typed.slice(0, -1);
-      updateHintVisibility();
+      state.typed = state.typed.slice(0, -1);
+      updateHintVisibility(state);
       break;
-    default: {
-      HintState.typed += key.toLowerCase();
-      const currentTypedHint = HintState.typed;
-      const matchingHints = Array.from(
-        HintState.hints.keys().filter((hint) =>
-          hint.startsWith(currentTypedHint)
-        )
-      );
 
-      /**
-       * In case of no matches, remove the last typed character,
-       * saves the user from having to press backspace repeatedly.
-       */
-      if (matchingHints.length === 0) {
-        HintState.typed = HintState.typed.slice(0, -1);
-        return;
-      }
+    case "character": {
+      const candidateTyped = state.typed + action.char;
+      const matchingHints = Array.from(state.hints.keys()).filter(h => h.startsWith(candidateTyped));
 
-      /**
-       * In case partial match leads to a single hint, immediately execute the click
-       * Example: [aa, ab, jk] are hints, if user types 'j' it matches to single hint 'jk'
-       * so we can directly execute the click. The same cannot be done for 'a' as it matches to
-       * multiple hints.
-       */
+      if (matchingHints.length === 0) break;
+
+      state.typed = candidateTyped;
+
       if (matchingHints.length === 1) {
-        const label = matchingHints[0];
-        if (!label) {
-          console.error("[Keyboard Hints] Unexpected error: matching hint label is undefined.");
-          hideHints()
-          return;
-        }
-
-        const element = HintState.hints.get(label);
-        if (element) {
-          executeClick(element);
-          hideHints();
-          return;
-        }
+        const element = state.hints.get(matchingHints[0]!);
+        if (element) executeClick(element, state);
+        hideHints();
+        break;
       }
 
-      updateHintVisibility();
+      updateHintVisibility(state);
+      break;
     }
   }
 }
 
-function preventEventDefaults(event: KeyboardEvent): void {
-  event.preventDefault();
-  event.stopPropagation();
+function handleInactiveState(event: KeyboardEvent, key: string): void {
+  const modifierPrefix = [
+    event.ctrlKey && "ctrl",
+    event.shiftKey && "shift",
+  ].filter(Boolean).join("+");
+
+  const lookupKey = modifierPrefix ? `${modifierPrefix}+${key}` : key;
+  const config = ActivationKeys[lookupKey];
+
+  if (!config) return;
+
+  preventEventDefaults(event);
+
+  HintState = {
+    status: HintStatus.active,
+    clickMode: config.clickMode,
+    scope: config.scope,
+    hints: new Map(),
+    overlays: [],
+    typed: "",
+  };
+
+  showHints(HintState);
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -350,24 +339,14 @@ function handleKeydown(event: KeyboardEvent): void {
 
   const key = event.key.toLowerCase();
 
-  if (HintState.active) {
-    preventEventDefaults(event)
-    handleHintInput(key);
-    return;
+  switch (HintState.status) {
+    case HintStatus.active:
+      handleActiveState(event, key, HintState);
+      break;
+    case HintStatus.inactive:
+      handleInactiveState(event, key);
+      break;
   }
-
-  const modifiers: KeyModifier[] = [];
-  if (event.ctrlKey) modifiers.push("ctrl");
-  if (event.altKey) modifiers.push("alt");
-  if (event.shiftKey) modifiers.push("shift");
-  if (event.metaKey) modifiers.push("meta");
-
-  const shortcut = Shortcuts.find(shortcut => shortcut.key === key && shortcut.modifiers.every(modifier => modifiers.includes(modifier)));
-  if (!shortcut) return;
-
-  preventEventDefaults(event);
-  HintState = shortcut.transition ? shortcut.transition() : HintState;
-  shortcut.action();
 }
 
 document.addEventListener("keydown", handleKeydown, true);
