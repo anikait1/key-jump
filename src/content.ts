@@ -42,10 +42,10 @@ type HintStateType = ActiveHintState | InactiveHintState;
 type ActivationConfig = { clickMode: ClickModeType; scope: HintScopeType };
 
 const ActivationKeys: Record<string, ActivationConfig> = {
-  "f": { clickMode: "left", scope: "configured" },
-  "shift+f": { clickMode: "right", scope: "configured" },
-  "ctrl+f": { clickMode: "left", scope: "all" },
-  "ctrl+shift+f": { clickMode: "right", scope: "all" },
+  "Semicolon": { clickMode: "left", scope: "configured" },
+  "shift+Semicolon": { clickMode: "right", scope: "configured" },
+  "ctrl+Semicolon": { clickMode: "left", scope: "all" },
+  "ctrl+shift+Semicolon": { clickMode: "right", scope: "all" },
 };
 
 const HintCharacters = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "u", "i", "o", "p"];
@@ -279,13 +279,14 @@ function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintS
   }
 }
 
-function handleInactiveState(event: KeyboardEvent, key: string): void {
+function handleInactiveState(event: KeyboardEvent): void {
   const modifierPrefix = [
     event.ctrlKey && "ctrl",
     event.shiftKey && "shift",
   ].filter(Boolean).join("+");
 
-  const lookupKey = modifierPrefix ? `${modifierPrefix}+${key}` : key;
+  const code = event.code;
+  const lookupKey = modifierPrefix ? `${modifierPrefix}+${code}` : code;
   const config = ActivationKeys[lookupKey];
 
   if (!config) return;
@@ -328,7 +329,7 @@ function handleKeydown(event: KeyboardEvent): void {
       handleActiveState(event, key, HintState);
       break;
     case HintStatus.inactive:
-      handleInactiveState(event, key);
+      handleInactiveState(event);
       break;
   }
 }
@@ -336,4 +337,4 @@ function handleKeydown(event: KeyboardEvent): void {
 document.addEventListener("keydown", handleKeydown, true);
 
 console.log(`[Keyboard Hints] Loaded config: ${CurrentSiteConfig.name}`);
-console.log("[Keyboard Hints] Shortcuts: f, Shift+F, Ctrl+f, Ctrl+Shift+F, Esc");
+console.log("[Keyboard Hints] Shortcuts: ;, Shift+;, Ctrl+;, Ctrl+Shift+;, Esc");

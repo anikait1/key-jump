@@ -6,18 +6,18 @@ A browser extension that adds keyboard hints to any website. Press a key to reve
 
 | Shortcut | Action |
 |----------|--------|
-| `f` | Show hints for left-click (common elements) |
-| `Shift+F` | Show hints for right-click (common elements) |
-| `Ctrl+f` | Show hints for left-click (ALL elements) |
-| `Ctrl+Shift+F` | Show hints for right-click (ALL elements) |
+| `;` | Show hints for left-click (common elements) |
+| `Shift+;` | Show hints for right-click (common elements) |
+| `Ctrl+;` | Show hints for left-click (ALL elements) |
+| `Ctrl+Shift+;` | Show hints for right-click (ALL elements) |
 | `Esc` | Cancel hint mode |
 | `Backspace` | Delete last typed character |
 | Extension icon | Show help popup |
 
 ### Two-Tier Hints
 
-- **Common mode** (`f` / `Shift+F`): Shows hints for high-value elements — less clutter
-- **All mode** (`Ctrl+f` / `Ctrl+Shift+F`): Shows hints for every clickable element — power user mode
+- **Common mode** (`;` / `Shift+;`): Shows hints for high-value elements — less clutter
+- **All mode** (`Ctrl+;` / `Ctrl+Shift+;`): Shows hints for every clickable element — power user mode
 
 ### Per-Site Configuration
 
@@ -27,9 +27,9 @@ Configure custom CSS selectors for any website to hint only the elements you wan
 
 When a context menu (right-click menu) is open, hints automatically scope to only the menu items. This enables a smooth workflow:
 
-1. `Shift+F` → right-click hint on an element
+1. `Shift+;` → right-click hint on an element
 2. Context menu opens
-3. `f` → hints appear only on menu options
+3. `;` → hints appear only on menu options
 4. Type hint → action executes
 
 ## Installation
@@ -71,17 +71,17 @@ After making changes, refresh the extension in your browser's extension page.
 ## Usage Examples
 
 **Click a link:**
-1. Press `f` to show click hints
+1. Press `;` to show click hints
 2. Type the hint on the link
 
 **Right-click menu action:**
-1. Press `Shift+F` to show right-click hints
+1. Press `Shift+;` to show right-click hints
 2. Type the hint → context menu opens
-3. Press `f` → hints appear on menu items only
+3. Press `;` → hints appear on menu items only
 4. Type hint for desired action
 
-**Navigate to an element with Ctrl+f:**
-1. Press `Ctrl+f` to show all hints (includes links)
+**Navigate to an element with Ctrl+;:**
+1. Press `Ctrl+;` to show all hints (includes links)
 2. Type the hint on the element
 
 ## Project Structure
