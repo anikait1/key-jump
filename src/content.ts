@@ -48,20 +48,8 @@ const ActivationKeys: Record<string, ActivationConfig> = {
   "ctrl+shift+f": { clickMode: "right", scope: "all" },
 };
 
-type HintInputAction =
-  | { type: "escape" }
-  | { type: "backspace" }
-  | { type: "character"; char: string }
-  | { type: "ignored" };
-
 const HintCharacters = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "u", "i", "o", "p"];
 
-function classifyHintInput(key: string): HintInputAction {
-  if (key === "escape") return { type: "escape" };
-  if (key === "backspace") return { type: "backspace" };
-  if (HintCharacters.includes(key)) return { type: "character", char: key };
-  return { type: "ignored" };
-}
 const HintContainerId = "keyboard-hints-container";
 const MenuSelectors = [
   '[role="menuitem"]',
@@ -257,14 +245,10 @@ function preventEventDefaults(event: KeyboardEvent): void {
 }
 
 function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintState): void {
+  if (key !== "escape" && key !== "backspace" && !HintCharacters.includes(key)) return;
+
   preventEventDefaults(event);
-
-  const action = classifyHintInput(key);
-
-  switch (action.type) {
-    case "ignored":
-      break;
-
+  switch (key) {
     case "escape":
       hideHints();
       break;
@@ -274,8 +258,8 @@ function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintS
       updateHintVisibility(state);
       break;
 
-    case "character": {
-      const candidateTyped = state.typed + action.char;
+    default: {
+      const candidateTyped = state.typed + key;
       const matchingHints = Array.from(state.hints.keys()).filter(h => h.startsWith(candidateTyped));
 
       if (matchingHints.length === 0) break;

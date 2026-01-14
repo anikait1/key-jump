@@ -19,6 +19,40 @@ Default to using Bun instead of Node.js.
 - Prefer `Bun.file` over `node:fs`'s readFile/writeFile
 - Bun.$`ls` instead of execa.
 
+## Code Style
+
+### Avoid Premature Abstraction
+Don't create functions unless the logic is reused elsewhere. Long, focused functions are acceptable.
+
+Example from codebase (`src/content.ts:307`):
+```ts
+function handleKeydown(event: KeyboardEvent): void {
+  // All keydown logic in one place - input check, state dispatch
+}
+```
+
+### Minimize State
+Keep state minimal. Use discriminated unions for optional states.
+
+Example from codebase (`src/content.ts:40-42`):
+```ts
+type InactiveHintState = { status: "inactive" };
+type HintStateType = ActiveHintState | InactiveHintState;
+// Inactive state is minimal; active state only created when needed
+```
+
+### Reduce Exceptional Cases
+Write code so generic and edge cases use the same logic path, avoiding early exits or separate branches.
+
+Example from codebase (`src/content.ts:68-85`):
+```ts
+// Single loop handles any count - small or large - without special cases
+for (let i = 0; labels.length < count; i++) {
+  // ... generates next label
+}
+// Works for 5 elements or 5000 without branching logic
+```
+
 ## Testing
 
 Use `bun test` to run tests.
