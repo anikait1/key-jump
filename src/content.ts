@@ -45,18 +45,22 @@ let HintState: HintStateType = {
 };
 
 function generateHintLabels(count: number): string[] {
-  const labels: string[] = [];
-  const base = HintCharacters.length;
+  if (count === 0) return [];
 
+  const base = HintCharacters.length;
+  let length = 1;
+  while (Math.pow(base, length) < count) {
+    length++;
+  }
+
+  const labels: string[] = [];
   for (let i = 0; labels.length < count; i++) {
     let label = "";
     let n = i;
-
-    do {
+    for (let j = 0; j < length; j++) {
       label = HintCharacters[n % base] + label;
-      n = Math.floor(n / base) - 1;
-    } while (n >= 0);
-
+      n = Math.floor(n / base);
+    }
     labels.push(label);
   }
 
