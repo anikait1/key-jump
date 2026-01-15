@@ -10,7 +10,7 @@
     }
 
     body {
-      width: 320px;
+      width: 400px;
       background: #1f2933;
       color: #e6fffa;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -156,6 +156,234 @@
     .status.disabled {
       color: #f87171;
     }
+
+    .selectors-section {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+    }
+
+    .selectors-section h2 {
+      font-size: 10px;
+      font-weight: 700;
+      color: #2dd4bf;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .selectors-section textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #1f2933;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #e6fffa;
+      font-family: inherit;
+      font-size: 11px;
+      padding: 8px;
+      resize: vertical;
+    }
+
+    .selectors-section textarea:focus {
+      outline: none;
+      border-color: #2dd4bf;
+    }
+
+    .field-group {
+      margin-top: 10px;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 10px;
+      color: #9db5b4;
+      margin-bottom: 4px;
+    }
+
+    .field-group input {
+      width: 100%;
+      background: #1f2933;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #e6fffa;
+      font-family: inherit;
+      font-size: 11px;
+      padding: 6px 8px;
+    }
+
+    .field-group input:focus {
+      outline: none;
+      border-color: #2dd4bf;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .button-row button {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-save {
+      background: #2dd4bf;
+      color: #1f2933;
+    }
+
+    .btn-save:hover {
+      background: #5eead4;
+    }
+
+    .btn-reset {
+      background: #374151;
+      color: #e6fffa;
+    }
+
+    .btn-reset:hover {
+      background: #4b5563;
+    }
+
+    /* Collapsible sections */
+    .collapsible {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .collapsible::before {
+      content: "▸";
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .collapsible.open::before {
+      transform: rotate(90deg);
+    }
+
+    .collapsible-content {
+      display: none;
+      padding-top: 6px;
+    }
+
+    .collapsible-content.open {
+      display: block;
+    }
+
+    /* Selector list */
+    .selector-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .selector-item {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .selector-item input {
+      flex: 1;
+      background: #1f2933;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #e6fffa;
+      font-family: inherit;
+      font-size: 11px;
+      padding: 6px 8px;
+    }
+
+    .selector-item input:focus {
+      outline: none;
+      border-color: #2dd4bf;
+    }
+
+    .btn-icon {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: #374151;
+      color: #e6fffa;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .btn-icon:hover {
+      background: #4b5563;
+    }
+
+    .btn-icon.btn-remove:hover {
+      background: #dc2626;
+    }
+
+    .btn-add-selector {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border: 1px dashed #374151;
+      border-radius: 4px;
+      background: transparent;
+      color: #9db5b4;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-add-selector:hover {
+      border-color: #2dd4bf;
+      color: #2dd4bf;
+    }
+
+    /* Help text collapsible */
+    .help-toggle {
+      font-size: 11px;
+      color: #9db5b4;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 14px;
+    }
+
+    .help-toggle::before {
+      content: "▸";
+      font-size: 9px;
+      transition: transform 0.2s;
+    }
+
+    .help-toggle.open::before {
+      transform: rotate(90deg);
+    }
+
+    .help-content {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .help-content.open {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -176,20 +404,41 @@
     <div class="status" id="status-text">Extension is enabled</div>
   </div>
   
-  <div class="section">
-    <h2>Hint Mode</h2>
-    <div class="row"><kbd>;</kbd><span>Show click hints</span></div>
-    <div class="row"><kbd>Shift</kbd> + <kbd>;</kbd><span>Right-click hints</span></div>
+  <div class="selectors-section" id="selectors-section">
+    <h2>Selectors</h2>
+    <div class="selector-list" id="selector-list"></div>
+    <button class="btn-add-selector" id="add-selector-btn">+ Add Selector</button>
+    <div class="field-group">
+      <label for="popup-selector-input">Popup/Menu Selector (optional)</label>
+      <input type="text" id="popup-selector-input" placeholder="e.g. .dropdown-menu">
+    </div>
+    <div class="button-row">
+      <button class="btn-reset" id="reset-btn">Reset</button>
+      <button class="btn-save" id="save-btn">Save</button>
+    </div>
   </div>
-  
-  <div class="section">
-    <h2>While in Hint Mode</h2>
-    <div class="row"><kbd>a-z</kbd><span>Type hint characters</span></div>
-    <div class="row"><kbd>Backspace</kbd><span>Delete last character</span></div>
-    <div class="row"><kbd>Esc</kbd><span>Cancel</span></div>
+
+  <div class="help-toggle" id="help-toggle">Keyboard Shortcuts</div>
+  <div class="help-content" id="help-content">
+    <div class="section">
+      <h2 class="collapsible open" data-target="hint-mode-content">Hint Mode</h2>
+      <div class="collapsible-content open" id="hint-mode-content">
+        <div class="row"><kbd>;</kbd><span>Show click hints</span></div>
+        <div class="row"><kbd>Shift</kbd> + <kbd>;</kbd><span>Right-click hints</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="collapsible open" data-target="while-hint-content">While in Hint Mode</h2>
+      <div class="collapsible-content open" id="while-hint-content">
+        <div class="row"><kbd>a-z</kbd><span>Type hint characters</span></div>
+        <div class="row"><kbd>Backspace</kbd><span>Delete last character</span></div>
+        <div class="row"><kbd>Esc</kbd><span>Cancel</span></div>
+      </div>
+    </div>
+
+    <p class="tip">When a context menu is open, hints automatically scope to menu items only.</p>
   </div>
-  
-  <p class="tip">When a context menu is open, hints automatically scope to menu items only.</p>
 
   <script type="module" src="../dist/popup.js"></script>
 </body>
