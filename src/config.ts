@@ -1,3 +1,5 @@
+const browserAPI = typeof browser !== "undefined" ? browser : chrome;
+
 export type EnabledSiteConfig = {
   enabled: true;
   name: string;
@@ -60,12 +62,12 @@ export const BuiltInSiteConfigs: EnabledSiteConfig[] = [
 ];
 
 async function getStoredConfigs(): Promise<Record<string, SiteConfig>> {
-  const result = await browser.storage.sync.get({ [StorageKeys.siteConfigs]: {} });
+  const result = await browserAPI.storage.sync.get({ [StorageKeys.siteConfigs]: {} });
   return result[StorageKeys.siteConfigs];
 }
 
 async function saveStoredConfigs(configs: Record<string, SiteConfig>): Promise<void> {
-  await browser.storage.sync.set({ [StorageKeys.siteConfigs]: configs });
+  await browserAPI.storage.sync.set({ [StorageKeys.siteConfigs]: configs });
 }
 
 export async function getStoredConfig(hostname: string): Promise<SiteConfig | null> {

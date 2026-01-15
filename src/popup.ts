@@ -1,8 +1,10 @@
 import { getStoredConfig, setStoredConfig } from "./config";
 
-const hostnameEl = document.getElementById("current-hostname") as HTMLElement;
-const toggleEl = document.getElementById("site-toggle") as HTMLInputElement;
-const statusEl = document.getElementById("status-text") as HTMLElement;
+const browserAPI = typeof browser !== "undefined" ? browser : chrome;
+
+const hostnameEl = document.querySelector<HTMLElement>("#current-hostname")!;
+const toggleEl = document.querySelector<HTMLInputElement>("#site-toggle")!;
+const statusEl = document.querySelector<HTMLElement>("#status-text")!;
 
 function updateStatus(enabled: boolean): void {
   if (enabled) {
@@ -15,7 +17,7 @@ function updateStatus(enabled: boolean): void {
 }
 
 async function init(): Promise<void> {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.url) {
     hostnameEl.textContent = "Unable to detect site";

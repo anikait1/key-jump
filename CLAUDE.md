@@ -51,6 +51,17 @@ type HintStateType = ActiveHintState | InactiveHintState;
 // Inactive state is minimal; active state only created when needed
 ```
 
+### Avoid `as` Type Casts
+Prefer generics or type guards over `as` casts. They provide better type safety.
+
+```ts
+// Good
+const el = document.querySelector<HTMLInputElement>("#my-input")!;
+
+// Bad
+const el = document.getElementById("my-input") as HTMLInputElement;
+```
+
 ### Reduce Exceptional Cases
 Write code so generic and edge cases use the same logic path, avoiding early exits or separate branches.
 
