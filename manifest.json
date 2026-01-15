@@ -3,7 +3,7 @@
   "name": "Key Jump",
   "version": "0.1.0",
   "description": "Keyboard hints for websites with per-site selector configuration",
-  "permissions": [],
+  "permissions": ["storage", "activeTab"],
   "action": {
     "default_popup": "src/popup.html",
     "default_title": "Keyboard Hints"

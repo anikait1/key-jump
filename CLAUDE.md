@@ -21,6 +21,16 @@ Default to using Bun instead of Node.js.
 
 ## Code Style
 
+### Naming Conventions
+Use PascalCase for constant objects, not SCREAMING_SNAKE_CASE:
+```ts
+// Good
+const StorageKeys = { siteConfigs: "siteConfigs" } as const;
+
+// Bad
+const STORAGE_KEYS = { siteConfigs: "siteConfigs" } as const;
+```
+
 ### Avoid Premature Abstraction
 Don't create functions unless the logic is reused elsewhere. Long, focused functions are acceptable.
 

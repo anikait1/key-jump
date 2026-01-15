@@ -1,18 +1,4 @@
-import { type SiteConfig, getConfigForUrl } from "./config";
-
-/**
- * TODO: Make 'configured' scope configurable per website
- * 
- * Showing all clickable elements on the page with keyboard hints can clutter the screen a lot.
- * Therefore, we define two scopes for hints. Eventually the goal is to allow users to customize
- * the selectors used for 'configured' scope and make it a per site configurable option.
- * - configured: A curated set of commonly used clickable elements defined per site in the config.
- * - all: All clickable elements found on the page using generic selectors.
- */
-const HintScope = {
-  configured: "configured",
-  all: "all",
-} as const
+import { type SiteConfig, getBuiltInConfig, getStoredConfig } from "./config";
 
 const HintStatus = {
   active: "active",
@@ -24,28 +10,23 @@ const ClickMode = {
   right: "right",
 } as const
 
-
-type HintScopeType = typeof HintScope[keyof typeof HintScope];
 type ClickModeType = typeof ClickMode[keyof typeof ClickMode];
 
 type ActiveHintState = {
   status: "active";
   clickMode: ClickModeType;
-  scope: HintScopeType;
+  config: SiteConfig;
   hints: Map<string, HTMLElement>;
   overlays: HTMLElement[];
   typed: string;
 };
 
-type InactiveHintState = { status: "inactive" };
+type InactiveHintState = { status: "inactive"; config: SiteConfig };
 type HintStateType = ActiveHintState | InactiveHintState;
-type ActivationConfig = { clickMode: ClickModeType; scope: HintScopeType };
 
-const ActivationKeys: Record<string, ActivationConfig> = {
-  "Semicolon": { clickMode: "left", scope: "configured" },
-  "shift+Semicolon": { clickMode: "right", scope: "configured" },
-  "ctrl+Semicolon": { clickMode: "left", scope: "all" },
-  "ctrl+shift+Semicolon": { clickMode: "right", scope: "all" },
+const ActivationKeys: Record<string, ClickModeType> = {
+  "Semicolon": "left",
+  "shift+Semicolon": "right",
 };
 
 const HintCharacters = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "u", "i", "o", "p"];
@@ -58,13 +39,11 @@ const MenuSelectors = [
   "button",
 ];
 
-const CurrentSiteConfig: SiteConfig = getConfigForUrl(window.location.href);
-let HintState: HintStateType = { status: HintStatus.inactive };
+let HintState: HintStateType = {
+  status: HintStatus.inactive,
+  config: getBuiltInConfig(window.location.href),
+};
 
-/**
- * Generate uniqu keyboard hint labels using base-N encoding over the HintCharacters.
- * Labels are generated in increasing order of length (a, s, d, ..., aa, as, ...)
- */
 function generateHintLabels(count: number): string[] {
   const labels: string[] = [];
   const base = HintCharacters.length;
@@ -84,20 +63,10 @@ function generateHintLabels(count: number): string[] {
   return labels;
 }
 
-function getClickableElements(state: ActiveHintState): HTMLElement[] {
-  /**
-   * In case the config has a popup selector and the selector is visible prioritize
-   * rendering hints within the popup only.
-   */
+function getClickableElements(config: SiteConfig): HTMLElement[] {
   let popup: HTMLElement | null = null;
-  if (CurrentSiteConfig.popupSelector) {
-    const potentialPopup = document.querySelector<HTMLElement>(CurrentSiteConfig.popupSelector);
-    /**
-     * It is possible the popup exists in the DOM but is not currently visible.
-     * We only want to consider it if it is visible (offsetParent is not null).
-     *
-     * Ref: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/offsetParent
-     */
+  if (config.popupSelector) {
+    const potentialPopup = document.querySelector<HTMLElement>(config.popupSelector);
     if (potentialPopup && potentialPopup.offsetParent !== null) {
       popup = potentialPopup;
     }
@@ -109,18 +78,11 @@ function getClickableElements(state: ActiveHintState): HTMLElement[] {
       ...Array.from(popup.querySelectorAll<HTMLElement>(MenuSelectors.join(", ")))
     )
   } else {
-    const selectors = state.scope === "configured" ? CurrentSiteConfig.configuredSelectors : CurrentSiteConfig.allSelectors;
     elements.push(
-      ...Array.from(document.querySelectorAll<HTMLElement>(selectors.join(", ")))
+      ...Array.from(document.querySelectorAll<HTMLElement>(config.selectors.join(", ")))
     )
   }
 
-  /**
-   * Filter out non visible elements, however the issue here is if the screen changes
-   * due to some other interaction (scroll etc.) the hints will not update their visibility.
-   *
-   * TODO: Implement a MutationObserver or IntersectionObserver to handle dynamic visibility changes?
-   */
   return elements.filter((element) => {
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
@@ -173,7 +135,7 @@ function createHintOverlay(label: string, element: HTMLElement): HTMLElement {
 }
 
 function showHints(state: ActiveHintState): void {
-  const elements = getClickableElements(state);
+  const elements = getClickableElements(state.config);
   if (elements.length === 0) return;
 
   const labels = generateHintLabels(elements.length);
@@ -200,13 +162,13 @@ function showHints(state: ActiveHintState): void {
   console.debug(`[Keyboard Hints] Showing ${elements.length} hints (${state.clickMode}-click mode)`);
 }
 
-function hideHints(): void {
+function hideHints(state: ActiveHintState): void {
   const container = document.getElementById(HintContainerId);
   if (container) {
     container.innerHTML = "";
   }
 
-  HintState = { status: HintStatus.inactive };
+  HintState = { status: HintStatus.inactive, config: state.config };
 }
 
 function updateHintVisibility(state: ActiveHintState): void {
@@ -250,7 +212,7 @@ function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintS
   preventEventDefaults(event);
   switch (key) {
     case "escape":
-      hideHints();
+      hideHints(state);
       break;
 
     case "backspace":
@@ -269,7 +231,7 @@ function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintS
       if (matchingHints.length === 1) {
         const element = state.hints.get(matchingHints[0]!);
         if (element) executeClick(element, state);
-        hideHints();
+        hideHints(state);
         break;
       }
 
@@ -279,24 +241,23 @@ function handleActiveState(event: KeyboardEvent, key: string, state: ActiveHintS
   }
 }
 
-function handleInactiveState(event: KeyboardEvent): void {
+function handleInactiveState(event: KeyboardEvent, state: InactiveHintState): void {
   const modifierPrefix = [
-    event.ctrlKey && "ctrl",
     event.shiftKey && "shift",
   ].filter(Boolean).join("+");
 
   const code = event.code;
   const lookupKey = modifierPrefix ? `${modifierPrefix}+${code}` : code;
-  const config = ActivationKeys[lookupKey];
+  const clickMode = ActivationKeys[lookupKey];
 
-  if (!config) return;
+  if (!clickMode) return;
 
   preventEventDefaults(event);
 
   HintState = {
     status: HintStatus.active,
-    clickMode: config.clickMode,
-    scope: config.scope,
+    clickMode,
+    config: state.config,
     hints: new Map(),
     overlays: [],
     typed: "",
@@ -306,12 +267,6 @@ function handleInactiveState(event: KeyboardEvent): void {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-  /**
-   * Do not trigger hints if an input field is focused
-   * to avoid interfering with user typing. This also means
-   * if a user focuses on an input field even after activating
-   * hints, the hints will not process further input.
-   */
   const activeElement = document.activeElement;
   if (activeElement) {
     const tagName = activeElement.tagName.toLowerCase();
@@ -329,12 +284,32 @@ function handleKeydown(event: KeyboardEvent): void {
       handleActiveState(event, key, HintState);
       break;
     case HintStatus.inactive:
-      handleInactiveState(event);
+      handleInactiveState(event, HintState);
       break;
   }
 }
 
-document.addEventListener("keydown", handleKeydown, true);
+async function init(): Promise<void> {
+  const hostname = new URL(window.location.href).hostname;
+  const storedConfig = await getStoredConfig(hostname);
 
-console.log(`[Keyboard Hints] Loaded config: ${CurrentSiteConfig.name}`);
-console.log("[Keyboard Hints] Shortcuts: ;, Shift+;, Ctrl+;, Ctrl+Shift+;, Esc");
+  if (storedConfig && !storedConfig.enabled) {
+    console.log(`[Keyboard Hints] Disabled on ${hostname} (blacklisted)`);
+    return;
+  }
+
+  if (storedConfig?.enabled) {
+    if (storedConfig.selectors) {
+      HintState.config.selectors = storedConfig.selectors;
+    }
+    if (storedConfig.popupSelector) {
+      HintState.config.popupSelector = storedConfig.popupSelector;
+    }
+  }
+
+  document.addEventListener("keydown", handleKeydown, true);
+  console.log(`[Keyboard Hints] Loaded config: ${HintState.config.name}`);
+  console.log("[Keyboard Hints] Shortcuts: ;, Shift+;, Esc");
+}
+
+init();
