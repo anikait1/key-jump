@@ -1,4 +1,4 @@
-import { type SiteConfig, getBuiltInConfig, getStoredConfig } from "./config";
+import { type EnabledSiteConfig, getConfig, DefaultConfig } from "./config";
 
 const HintStatus = {
   active: "active",
@@ -15,13 +15,13 @@ type ClickModeType = typeof ClickMode[keyof typeof ClickMode];
 type ActiveHintState = {
   status: "active";
   clickMode: ClickModeType;
-  config: SiteConfig;
+  config: EnabledSiteConfig;
   hints: Map<string, HTMLElement>;
   overlays: HTMLElement[];
   typed: string;
 };
 
-type InactiveHintState = { status: "inactive"; config: SiteConfig };
+type InactiveHintState = { status: "inactive"; config: EnabledSiteConfig };
 type HintStateType = ActiveHintState | InactiveHintState;
 
 const ActivationKeys: Record<string, ClickModeType> = {
@@ -41,7 +41,7 @@ const MenuSelectors = [
 
 let HintState: HintStateType = {
   status: HintStatus.inactive,
-  config: getBuiltInConfig(window.location.href),
+  config: DefaultConfig,
 };
 
 function generateHintLabels(count: number): string[] {
@@ -63,7 +63,7 @@ function generateHintLabels(count: number): string[] {
   return labels;
 }
 
-function getClickableElements(config: SiteConfig): HTMLElement[] {
+function getClickableElements(config: EnabledSiteConfig): HTMLElement[] {
   let popup: HTMLElement | null = null;
   if (config.popupSelector) {
     const potentialPopup = document.querySelector<HTMLElement>(config.popupSelector);
@@ -290,25 +290,18 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 async function init(): Promise<void> {
-  const hostname = new URL(window.location.href).hostname;
-  const storedConfig = await getStoredConfig(hostname);
+  const config = await getConfig(window.location.href);
 
-  if (storedConfig && !storedConfig.enabled) {
+  if (!config || config.enabled === false) {
+    const hostname = new URL(window.location.href).hostname;
     console.log(`[Keyboard Hints] Disabled on ${hostname} (blacklisted)`);
     return;
   }
 
-  if (storedConfig?.enabled) {
-    if (storedConfig.selectors) {
-      HintState.config.selectors = storedConfig.selectors;
-    }
-    if (storedConfig.popupSelector) {
-      HintState.config.popupSelector = storedConfig.popupSelector;
-    }
-  }
+  HintState.config = config;
 
   document.addEventListener("keydown", handleKeydown, true);
-  console.log(`[Keyboard Hints] Loaded config: ${HintState.config.name}`);
+  console.log(`[Keyboard Hints] Loaded config: ${config.name}`);
   console.log("[Keyboard Hints] Shortcuts: ;, Shift+;, Esc");
 }
 

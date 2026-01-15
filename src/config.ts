@@ -1,19 +1,19 @@
-export interface SiteConfig {
+export type EnabledSiteConfig = {
+  enabled: true;
   name: string;
   urlPattern: string;
   selectors: string[];
   popupSelector?: string;
-}
+};
 
-export type StoredSiteConfig =
-  | { enabled: true; selectors?: string[]; popupSelector?: string }
-  | { enabled: false };
+export type SiteConfig = EnabledSiteConfig | { enabled: false };
 
 const StorageKeys = {
   siteConfigs: "siteConfigs",
 } as const;
 
-export const DefaultConfig: SiteConfig = {
+export const DefaultConfig: EnabledSiteConfig = {
+  enabled: true,
   name: "Default",
   urlPattern: "*",
   selectors: [
@@ -29,8 +29,9 @@ export const DefaultConfig: SiteConfig = {
   ],
 };
 
-export const BuiltInSiteConfigs: SiteConfig[] = [
+export const BuiltInSiteConfigs: EnabledSiteConfig[] = [
   {
+    enabled: true,
     name: "YouTube Music",
     urlPattern: "music.youtube.com",
     selectors: [
@@ -58,21 +59,21 @@ export const BuiltInSiteConfigs: SiteConfig[] = [
   },
 ];
 
-async function getStoredConfigs(): Promise<Record<string, StoredSiteConfig>> {
+async function getStoredConfigs(): Promise<Record<string, SiteConfig>> {
   const result = await browser.storage.sync.get({ [StorageKeys.siteConfigs]: {} });
   return result[StorageKeys.siteConfigs];
 }
 
-async function saveStoredConfigs(configs: Record<string, StoredSiteConfig>): Promise<void> {
+async function saveStoredConfigs(configs: Record<string, SiteConfig>): Promise<void> {
   await browser.storage.sync.set({ [StorageKeys.siteConfigs]: configs });
 }
 
-export async function getStoredConfig(hostname: string): Promise<StoredSiteConfig | null> {
+export async function getStoredConfig(hostname: string): Promise<SiteConfig | null> {
   const configs = await getStoredConfigs();
   return configs[hostname] ?? null;
 }
 
-export async function setStoredConfig(hostname: string, config: StoredSiteConfig | null): Promise<void> {
+export async function setStoredConfig(hostname: string, config: SiteConfig | null): Promise<void> {
   const configs = await getStoredConfigs();
   if (config === null) {
     delete configs[hostname];
@@ -82,7 +83,13 @@ export async function setStoredConfig(hostname: string, config: StoredSiteConfig
   await saveStoredConfigs(configs);
 }
 
-export function getBuiltInConfig(url: string): SiteConfig {
+export async function getConfig(url: string): Promise<SiteConfig | null> {
   const hostname = new URL(url).hostname;
-  return BuiltInSiteConfigs.find(config => hostname.includes(config.urlPattern)) ?? DefaultConfig;
+  const stored = await getStoredConfig(hostname);
+
+  if (!stored) {
+    return BuiltInSiteConfigs.find(config => hostname.includes(config.urlPattern)) ?? DefaultConfig;
+  }
+
+  return stored;
 }
